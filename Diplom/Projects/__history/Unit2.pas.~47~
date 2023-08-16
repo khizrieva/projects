@@ -1,0 +1,190 @@
+unit Unit2;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Math;
+
+type
+  TMatrix = Array of Array of Double;
+	TFunction = Function(X:Double):Double;
+  TForm3 = class(TForm)
+    Edit1: TEdit;
+    RadioButton1: TRadioButton;
+    RadioButton2: TRadioButton;
+    Button1: TButton;
+    Memo2: TMemo;
+    Button2: TButton;
+    memo1: TMemo;
+    Memo3: TMemo;
+    Memo4: TMemo;
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form3: TForm3;
+
+implementation
+
+{$R *.dfm}
+
+Procedure Gauss(var A: TMatrix);
+	Procedure SwapRows(I,J,N: Integer);
+	Var
+		Tmp: Double;
+    k: Integer;
+	Begin
+		If I<>J Then
+		Begin
+    for k := 0 to N do
+      begin
+          Tmp := A[I,k];
+			    A[I,k] := A[J,k];
+			    A[J,k] := Tmp;
+      end;
+
+		End;
+	End;
+Var
+	N, Row, CurRow, MaxRow, Col: Integer;
+	AbsMax, CurAbs, Aii, Aji: Double;
+Begin
+	N:=High(A)+1;
+	For Row:=0 To N-1 Do
+	Begin
+		AbsMax:=Abs(A[Row,Row]);
+		MaxRow:=Row;
+		For CurRow:=Row+1 To N-1 Do
+		Begin
+			CurAbs:=Abs(A[CurRow,Row]);
+			if CurAbs > AbsMax Then
+			Begin
+				AbsMax:=CurAbs;
+				MaxRow:=CurRow;
+			End;
+		End;
+		SwapRows(Row, MaxRow, N);
+		Aii:=A[Row,Row];
+		For Col:=Row+1 to N Do
+			A[Row, Col] := A[Row,Col]/Aii;
+		For CurRow:=Row+1 to N-1 Do
+		Begin
+			Aji := A[CurRow,Row];
+			For Col:=Row+1 to N Do
+				A[CurRow,Col] := A[CurRow,Col]-Aji*A[Row,Col];
+		End;
+	End;
+	For Row:=N-2 Downto 0 Do
+			For Col:=N-1 Downto Row+1 Do
+				A[Row,N] := A[Row,N]-A[Row,Col]*A[Col,N];
+End;
+
+
+Procedure InterpolateMonomial(Fun:TFunction; var Nodes: Array of Double; var Coeffs: Array of Double);
+Var
+	S:TMatrix;
+	N, Row, Col:Integer;
+Begin
+	N:=High(Nodes)+1;
+	SetLength(S, N, N+1);
+	For Row:=0 To N-1 Do
+		S[Row, 0]:=1;
+	For Col:=1 To N-1 Do
+		For Row:=0 to N-1 Do
+			S[Row, Col] := S[Row, Col-1]*Nodes[Row];
+	For Row:=0 To N-1 Do
+		S[Row, N]:=Fun(Nodes[Row]);
+	Gauss(S);
+	For Row:=0 To N-1 Do
+		Coeffs[Row] := S[Row,N];
+End;
+
+
+Procedure InterpolateChebyshev(Fun:TFunction; var Nodes: Array of Double; var Coeffs: Array of Double);
+Var
+	S:TMatrix;
+	N, Row, Col:Integer;
+Begin
+	N:=High(Nodes)+1;
+	SetLength(S, N, N+1);
+	For Row:=0 To N-1 Do
+	Begin
+		S[Row, 0]:=1;
+		S[Row, 1]:=Nodes[Row];
+	End;
+
+	For Col:=2 To N-1 Do
+		For Row:=0 to N-1 Do
+			S[Row, Col] := 2*Nodes[Row]*S[Row, Col-1]-S[Row, Col-2];
+	For Row:=0 To N-1 Do
+		S[Row, N]:=Fun(Nodes[Row]);
+	Gauss(S);
+	For Row:=0 To N-1 Do
+		Coeffs[Row] := S[Row,N];
+End;
+
+Function TestFunc(X:Double):Double;
+Begin
+	TestFunc:=(X+1)*(X+1)*(X+1);
+End;
+
+
+Function TestCheb(X:Double):Double;
+Begin
+	TestCheb:=Cos(3*ArcCos(X))+5*Cos(5*ArcCos(x));
+End;
+
+procedure TForm3.Button1Click(Sender: TObject);
+
+begin
+
+     memo1.lines.Add(edit1.text);
+
+end;
+
+
+
+procedure TForm3.Button2Click(Sender: TObject);
+var Nodes: array of double;
+i, n,q: integer;
+Coeffs: array of double;
+CoeffsCheb: array of double;
+
+begin
+      memo2.Clear;
+     n:= memo1.Lines.Count;
+     setlength(Nodes, n);
+     SetLength(Coeffs, n);
+     for i := 0 to n-1 do
+       begin
+         Nodes[i] := strtofloat(Memo1.Lines.Strings[i]);
+         memo3.lines.add(floattostr(Nodes[i]));          // вывод всех nodes, проверка что они правильно записываются
+       end;
+
+     for q:=0 to 6 do
+     begin
+        CoeffsCheb[q]:=0;
+        memo4.lines.add(floattostr(CoeffsCheb[q]));
+     end;
+
+
+
+//     if (radiobutton2.Checked) then
+//     InterpolateMonomial(@TestFunc, Nodes, Coeffs);
+//     if (radiobutton1.Checked) then
+     InterpolateChebyshev(@TestCheb, Nodes, CoeffsCheb);
+
+     for i := 0 to n-1 do
+        memo2.lines.add(floattostr(CoeffsCheb[i]))
+
+
+end;
+
+end.
